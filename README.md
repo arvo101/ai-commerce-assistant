@@ -86,8 +86,6 @@ This system behaves like an autonomous worker:
 ---
 
 ## Botpress Agent Layer
-![Botpress Search](./docs/productsearch_workflow.png)
-
 Botpress is the conversational and interpretation layer of the system.  
 It transforms free-text user messages into structured actions, selects the correct workflow, and collaborates with n8n to complete tasks end-to-end.
 
@@ -118,6 +116,7 @@ These structured fields feed directly into the product search engine.
 ---
 
 ### **3. Product Search Flow**
+![Botpress Search](./docs/productsearch_workflow.png)
 Botpress orchestrates the full search logic:
 - cleans & normalizes extracted attributes  
 - triggers the custom product search tool  
