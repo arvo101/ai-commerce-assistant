@@ -14,7 +14,7 @@ It is designed as a real-world agent that thinks, decides, executes tasks and ev
 ---
 
 ## System Architecture
-![Architecture](./docs/architecture.png)
+![Architecture](./docs/architecture_diagram.png)
 
 The assistant is built as a real-world autonomous system combining:
 
@@ -32,7 +32,7 @@ The assistant is built as a real-world autonomous system combining:
 ## 🚀 Core Capabilities
 
 ### **1. Autonomous Product Data Pipeline (8,000+ SKUs)**
-![n8n Pipeline](./docs/n8n-pipeline.png)
+![n8n Pipeline](./docs/n8n_workflow.png)
 
 End-to-end system that keeps the agent’s dataset always up to date without human intervention:
 - Hourly XML → JSON → Normalization pipeline  
@@ -86,7 +86,7 @@ This system behaves like an autonomous worker:
 ---
 
 ## Botpress Agent Layer
-![Botpress Search](./docs/botpress-product-search.png)
+![Botpress Search](./docs/productsearch_workflow.png)
 
 Botpress is the conversational and interpretation layer of the system.  
 It transforms free-text user messages into structured actions, selects the correct workflow, and collaborates with n8n to complete tasks end-to-end.
@@ -130,7 +130,7 @@ This allows the user to ask complex queries naturally (e.g. *“black men's paja
 ---
 
 ### 📦 Live Product Dataset (Botpress Table)
-![Product Table](./docs/botpress-table.png)
+![Product Table](./docs/botpress_table.png)
 
 ### **4. Multi-Knowledge-Base Routing**
 The agent dynamically selects the proper knowledge source:
