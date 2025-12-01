@@ -1,0 +1,467 @@
+{
+  "name": "Commerce AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "{XML_URL}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -32,
+        16
+      ],
+      "id": "ffb2b652-e401-4d4b-97f3-c355650757ea",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        608,
+        0
+      ],
+      "id": "66329188-71fa-45cc-a8f1-49e57bd87701",
+      "name": "XML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final Flatten & Map Data\n\nconst flatVariations = [];\nconst products = $json.mywebstore.products.product;\nconst productList = Array.isArray(products) ? products : [products];\n\nfor (const product of productList) {\n  \n  const parentData = {\n    mpn: product.mpn.trim(),\n    name: product.name.trim(),\n    description: product.description.trim(),\n    color: product.color.trim(),\n    imageurl: product.imageurl.trim(), \n    category: (product.category && product.category._) ? product.category._.trim() : String(product.category || '').trim(),\n  };\n\n  const variations = product.variations.variation;\n  const variationList = Array.isArray(variations) ? variations : [variations];\n\n  if (variationList && variationList[0]) { \n    \n    for (const variation of variationList) {\n      const finalItem = {\n        ...parentData,\n        \n        unique_id: variation.variationid.trim(),\n        size: variation.size.trim(),\n        quantity: parseFloat(variation.quantity),\n        price: parseFloat(variation.price_with_vat),\n        link: variation.link.trim(),\n        availability: variation.availability.trim()\n      };\n      flatVariations.push(finalItem);\n    }\n    \n  } else { \n    const finalItem = {\n      ...parentData,\n      unique_id: product.id.trim(),\n      size: product.size.trim(),\n      quantity: parseFloat(product.quantity),\n      price: parseFloat(product.price_with_vat),\n      link: product.link.trim(),\n      availability: product.availability.trim()\n    };\n    flatVariations.push(finalItem);\n  }\n}\n\nreturn flatVariations.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        0
+      ],
+      "id": "40ed92b5-f985-41d0-b100-e3b7d0852404",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "batchSize": 500,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "26acb56d-cec4-4259-a252-cc8709ba0b8c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.botpress.cloud/v1/tables/{TABLE_ID}/rows",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-bot-id",
+              "value": "{BOT_ID}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1920,
+        16
+      ],
+      "id": "04114bc5-e2fa-4b93-a1a8-011f6efea89b",
+      "name": "HTTP Request1",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Minimal Greek text normalization + batch packer for Botpress upsert\n// - Normalizes strings: lowercase, strip accents, final-ς→σ, remove punctuation, compress spaces\n// - Builds `search_text_norm` from key fields per item\n// - Packs all incoming items into a single output: { json: { rows: [...] } }\n\nfunction normalizeGreek(s = '') {\n  return String(s)\n    .toLowerCase()                               // lowercase\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '') // remove accents/diacritics\n    .replace(/ς/g, 'σ')                          // final sigma -> standard sigma\n    .replace(/[^\\p{L}\\p{N}\\s]/gu, '')            // drop punctuation/symbols\n    .replace(/\\s+/g, ' ')                         // collapse multiple spaces\n    .trim();                                      // trim ends\n}\n\nreturn [{\n  json: {\n    rows: $input.all().map(({ json }) => {\n      // Pull relevant fields; fall back to empty string to avoid \"undefined\"\n      const name  = json.name || '';\n      const desc  = json.description || '';\n      const cat   = json.category || '';\n      const color = json.color || '';\n      const size  = json.size || '';\n\n      // Return original item fields plus normalized search string\n      return {\n        ...json,\n        // Unified normalized text for Find Records matching (stems/gender/etc. check via includes)\n        search_text_norm: normalizeGreek(`${name} ${desc} ${cat} ${color} ${size}`)\n      };\n    })\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        16
+      ],
+      "id": "341952d1-fc91-4878-a3fd-99b18733d572",
+      "name": "Code in JavaScript1"
+    },
+     {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -272,
+        16
+      ],
+      "id": "3120c038-a92f-4ff2-b000-2abd906da634",
+      "name": "Schedule Trigger",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.botpress.cloud/v1/tables/{TABLE_ID}/rows/delete",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-bot-id",
+              "value": "{BOT_ID}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"deleteAllRows\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        192,
+        -128
+      ],
+      "id": "285518ed-b1a3-4357-a5ac-504b5b313f65",
+      "name": "HTTP DELETE",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        16
+      ],
+      "id": "97a91290-d637-4d1c-9564-3c7c9951fa1f",
+      "name": "Wait",
+      "webhookId": "REDACTED"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🛑 WARNING! XML REFRESH FAILED! 🛑\n\nThe script failed to download the XML feed. The table was NOT updated.\n\nError: ${$json.error.message}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        192,
+        144
+      ],
+      "id": "a85a04f3-7a6f-4cd9-ab75-fc369318a68c",
+      "name": "Discord Alert",
+      "webhookId": "REDACTED",
+      "retryOnFail": false,
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "REDACTED",
+          "name": "Discord Webhook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=⚠️ CRITICAL FAILURE! (BOTPRESS POST) ⚠️\n\nThe product loading process to Botpress was interrupted or did not complete.\n\nThe product table is INCOMPLETE or EMPTY!\n\nError: ${$json.error.message}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        -144
+      ],
+      "id": "4c44d682-cc01-4a3b-9e00-e21600360c90",
+      "name": "Discord Alert1",
+      "webhookId": "REDACTED",
+      "retryOnFail": false,
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "REDACTED",
+          "name": "Discord Webhook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        0
+      ],
+      "id": "d7409013-236b-4d96-bf87-c369c9d9ae64",
+      "name": "Wait1",
+      "webhookId": "REDACTED"
+    },
+    {
+      "parameters": {
+        "errorMessage": "HTTP POST failed!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        -144
+      ],
+      "id": "4bf42c1f-b51a-4820-b459-6d223f7beb2d",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        -176
+      ],
+      "id": "b3916225-27cb-4e25-807d-067f5076dd3d",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=✅ **SYNC SUCCESSFUL** ✅\n\nThe XML refresh (Wipe & Create) completed successfully.\n\n**Total records (variations) synced:** ${$items.length}\n\nAll batches were uploaded without error.\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        -176
+      ],
+      "id": "420dc0bd-9c60-4cd7-98d7-9b9d4420afea",
+      "name": "Discord Alert2",
+      "webhookId": "REDACTED",
+      "retryOnFail": false,
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "REDACTED",
+          "name": "Discord Webhook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP DELETE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord Alert1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP DELETE": {
+      "main": [
+        []
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Alert1": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Discord Alert2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3223cee7-7846-48da-92f6-092fcaa137e4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REDACTED"
+  },
+  "id": "REDACTED",
+  "tags": []
+}
