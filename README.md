@@ -1,5 +1,5 @@
 # AI Commerce Assistant  
-Autonomous agent system for a REAL fashion & homewear e-shop, built to operate 24/7 with live product data, semantic search, decision-making logic, and multi-KB reasoning.
+Autonomous agent system for a REAL lingerie & homewear e-shop, built to operate 24/7 with live product data, semantic search, decision-making logic, and multi-KB reasoning.
 
 This project demonstrates an end-to-end intelligent system:
 - continuous product ingestion (8,000+ SKUs)  
