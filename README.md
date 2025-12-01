@@ -139,9 +139,4 @@ Dynamic selection between store policies, gifts, and advice knowledge bases for 
 
 ---
 
-## **Included in this repository**
-Only the non-sensitive components of the agent are included:
-- **Product search flow export** → `/botpress_flows/`  
-- **Screenshots & diagrams** → `/docs/`  
-
 The full private bot and client-specific flows are intentionally excluded.
